@@ -1,0 +1,11 @@
+db 0:爬取的所有网页内容
+db 1:已处理的url队列
+db 2:未处理的url队列
+db 3:黑名单
+db 4:共享tag(ps:实现对同一数据库的网页存储操作，与续爬功能。)\
+db 5:词语对序号
+db 6:倒排索引
+db 7:网页url对序号
+db 8:pagerank中间传递tag
+db 9:pagerank中slave计算结果
+db 10:pageranke最终存储位置
