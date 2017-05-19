@@ -5,6 +5,9 @@ import redis
 import MySQLdb
 import re
 import os
+import sys
+reload(sys)
+sys.setdefaultencoding( "utf-8" )
 
 
 class Spider:
@@ -57,11 +60,11 @@ class Spider:
 		sentence = """
 		INSERT INTO html VALUES ('%d','%s','%s','%s','%d')
 		"""
-		print '1'
+		print 'Start to connect to database.'
 		c = rhtml.cursor()
 		c.execute("set names utf8")
 		rhtml.commit()
-		print '2'
+		print 'Set code mode successfully.'
 		try:
 			c.execute(sentence%(no,MySQLdb.escape_string(self.url),MySQLdb.escape_string(self.html),MySQLdb.escape_string(str(self.outdegree)),self.i))
 		except:
@@ -69,7 +72,11 @@ class Spider:
 			self.html = unicode(soup).encode('utf8')
 			c.execute(sentence%(no,MySQLdb.escape_string(self.url),MySQLdb.escape_string(self.html),MySQLdb.escape_string(str(self.outdegree)),self.i))
 		rhtml.commit()
-		print '3'
+		print 'Finish added data to databse.'
 		rurltag.set(self.url,no)
-		print self.url,'has benn saved.Its no. is ',no
+		try:
+			print self.url,'has benn saved.Its no. is ',no
+		except Exception as e:
+			print traceback.print_exc()
+		
 

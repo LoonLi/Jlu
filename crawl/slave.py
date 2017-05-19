@@ -7,6 +7,9 @@ import traceback
 import sys
 sys.path.append("..")
 import config
+import sys
+reload(sys)
+sys.setdefaultencoding( "utf-8" )
   
 class RedisQueue(object):  
     """Simple Queue with Redis Backend"""  
@@ -80,6 +83,7 @@ rurltag = redis.Redis(host=host_ip,port=host_port,db=urltag_db,password=host_pas
 # urls_dics = make_dic(start_urls,0)
 # for url in urls_dics:#put the urls to queue
 #     srq.put(url)
+error_count = 0
 while(True):
     # if nrq.empty() and srq.empty():
     #     print "Complete!"
@@ -96,6 +100,7 @@ while(True):
         # print urls_dic['url']
     except:
         print 'May be time out.'
+        blacklist.set(urls_dic['url'],-1)
         continue
     tag = int(trq.get())#get tag
     trq.put(tag+1)
@@ -106,8 +111,14 @@ while(True):
     try:
         s.parse_html(tag,rhtml,rurltag)#save html
     except:
+        # error_count+=1
+        # if error_count>5:
+        #     print "May be connection is closed."
+        #     sys.exit(0)
         print traceback.print_exc()
         continue
+    if error_count>0:
+        error_count=error_count-1
     end_time = time.time()
     print 'Parse time is:',end_time - start_time#the sum cost time
     if (end_time-start_time)>5:

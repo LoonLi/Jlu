@@ -1,3 +1,5 @@
-A testing searching engine sample.
+A redis-based distributed search engine.
 
-It is still in test.
+Set configuration imformation in config.py.
+
+crawl is spider part, and so on.

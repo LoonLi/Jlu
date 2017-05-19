@@ -1,0 +1,228 @@
+---
+layout: post
+title:  "git使用总结（一）——基础提交"
+date:   2016-11-11 11:49:45 +0200
+categories: tools,git
+published: true
+---
+	最近研究了一下git的用法。我看的教程来自[Git权威指南](http://www.worldhello.net/gotgit)，这里做个总结。
+
+## 0x00 git初始化
+
+git是一款非常强大的版本管理工具，拥有大量的功能。如果不能对它工作的原理有所了解，恐怕很难熟练地使用这项工具。首先新建一个文件夹作为项目目录，使用`git init`命令对它初始化。可以发现目录中多出了个`.git`的隐藏文件夹，其中记录的是项目的信息。
+
+## 0x01 add
+
+`.git`中记录了三部分的信息，分别是**工作区**，**暂存区**，**分支树**。`git`命令的操作也将基于这三个区域。**工作区**指的是实际磁盘上的空间，现在在工作区新建一个文件。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# echo "aasdf" > test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# ls
+test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# cat test1
+aasdf
+```
+
+使用`git status`命令可以看到当前项目的状态。另外`git status`命令可以加上-s参数查看简洁想信息。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git status
+On branch master
+
+Initial commit
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+        test1
+
+nothing added to commit but untracked files present (use "git add" to track)
+```
+
+根据提示，git提示我们使用add命令将test1文件添加到追踪文件。此处因为`.git`中没有关于test1文件的记录，所以test1是无法被识别的。所以我们使用`git add`在把test1增加到**暂存区**的同时，让`.git`记录下这个文件。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git add test1
+```
+
+此时test1文件已经在暂存区中了，可以使用`git ls-files`查看暂存区的文件。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git ls-files
+test1
+```
+
+## 0x02 commit
+
+现在可以使用`git commit`命令将我们的文件提交到版本库了。使用commit命令后，暂存区的数据会被提交到版本库，而不是工作区的数据，这个要区分清楚。记住要使用`-m`参数添加备注。如果是第一次提交，git会提示你输入你的邮箱和姓名，跟着指示做就可以了。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git commit -m "Fist commit"
+[master (root-commit) 7c1f345] Fist commit
+ 1 file changed, 1 insertion(+)
+ create mode 100644 test1
+```
+
+ 使用`git log`可以看到提交信息。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git log
+commit 7c1f345361b6eedb6448fa81e8baf9f27c0c0bfa
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:11:49 2016 +0800
+
+    Fist commit
+```
+
+可以看到commit后面跟着一个长字符串，其实那个该commit对应的SHA1值，可以作为此commit的ID，方便其他命令操作。此时相当于完成了一次版本的提交。
+
+## 0x03 reset checkout
+
+如果我想提交了几个版本后想回到前面的版本该怎么办呢？让我们先做如下的操作。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# echo "123456" > test2
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# echo "123456" >> test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git add test1 test2
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+        modified:   test1
+        new file:   test2
+
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# cat test2
+123456
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# cat test1
+aasdf
+123456
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git commit -m "Second commit"
+[master 4351123] Second commit
+ 2 files changed, 2 insertions(+)
+ create mode 100644 test2
+ root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# echo "8888" > test3
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git add test3
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+        new file:   test3
+
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git commit -m "Thrid commit"
+[master 1a10f65] Thrid commit
+ 1 file changed, 1 insertion(+)
+ create mode 100644 test3
+```
+
+使用`git log`命令查看提交记录。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git log
+commit 1a10f65be09ecca3df5b594f3b31c6810821f05c
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:26:47 2016 +0800
+
+    Thrid commit
+
+commit 4351123660f3e4852ec89a5177f8e1d7bbcf5b17
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:24:58 2016 +0800
+
+    Second commit
+
+commit 7c1f345361b6eedb6448fa81e8baf9f27c0c0bfa
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:11:49 2016 +0800
+
+    Fist commit
+```
+
+这时就可以用到`git reset`与`git chekcout`指令了。前面说过`.git`中记录了三部分的内容，`git reset`与`git checkout`这三部分之间的指针改变与内容覆盖的命令。这里引用[Gti权威指南]中的一幅图。
+
+![reset](http://www.worldhello.net/gotgit/images/git-reset.png)
+
+这里对图片稍作解释。其中*1*指向的是*HEAD*，即指向commit的指针（这种说法不太准确，不过此处可以这样理解），*2*指向的是暂存区，*3*指向的是工作区。另外，可以从图中看出来commit数据是一个链表结构，新的commit指向旧的commit。
+
+
+`git reset`有两种用法，这里只介绍常用的那种。`git reset [--soft | --mixed | --hard | --merge | --keep] [-q] [<commit>]`。其中<commit>是commit的id，即前面说到的SHA1值，但输入的时候只要输前几位就可以了。使用`--hard`参数的话会改变*1*，*2*，*3*全部的内容，即工作区和暂存区的内容都会被对应commit的数据覆盖。使用`--mixed`参数会改变*1*，*2*。使用`--soft`的话只改变*1*。该命令的缺省值是`--mixed HEAD`.
+
+
+`git checkout`有三种用法，另外两种涉及到分支，故暂且不提。此处用到的是`git checkout [-q] [<commit>] [--] <paths> ...`。此种checkout操作不会改编*HEAD*指针，而是会使用暂存区的文件覆盖工作区的文件。接下来看看例子吧，让我们回到最初的版本。
+
+
+根据上面提到的指令，还原似乎是有两种方案的。一是使用`git reset --hard <commit>`。另一种是先使用`git reset <commit>`，然后`git checkout -- *`。可实际上第二种是不行的，因为标记为*"Fist commit"*的commit的*.git*中并没有记录*test2*与*tset3*,使用`git checkout`会出错。所以只能使用第一种。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# ls
+test1  test2  test3
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git log
+commit 1a10f65be09ecca3df5b594f3b31c6810821f05c
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:26:47 2016 +0800
+
+    Thrid commit
+
+commit 4351123660f3e4852ec89a5177f8e1d7bbcf5b17
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:24:58 2016 +0800
+
+    Second commit
+
+commit 7c1f345361b6eedb6448fa81e8baf9f27c0c0bfa
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:11:49 2016 +0800
+
+    Fist commit
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git reset --hard 7c1f34
+HEAD is now at 7c1f345 Fist commit
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# ls
+test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git log
+commit 7c1f345361b6eedb6448fa81e8baf9f27c0c0bfa
+Author: Loon <l470279614@yahoo.com>
+Date:   Fri Nov 11 20:11:49 2016 +0800
+
+    Fist commit
+```
+
+	如果又想回到第三个版本呢？使用git reflog指令吧，里面有你的操作记录，在里面能找到第三个commit的ID。
+
+另外再实践一下`git checkout`的操作。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# cat test1
+aasdf
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# echo "123456" >> test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# cat test1
+aasdf
+123456
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git checkout -- test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# cat test1
+aasdf
+```
+
+## 0x04 stash
+
+当工作时到一半时，发现以前写的程序有bug怎么办呢？这个时候就可以用到`git stash`命令。使用该命令后，程序会回到HEAD指向的状态，工作区和暂存区的数据都将被保存。使用`git stash list`可以看到所有保存的状态。使用`git stash pop`命令，可以回到最新保存的状态，并且删除list中该条数据。使用`git stash apply`的话能回到保存状态，并且不删除list中数据。
+
+``` bash
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# ls
+test1  test2
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git stash
+Saved working directory and index state WIP on master: 7c1f345 Fist commit
+HEAD is now at 7c1f345 Fist commit
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# ls
+test1
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git stash list
+stash@{0}: WIP on master: 7c1f345 Fist commit
+root@DESKTOP-I943ECH:/mnt/e/test/GitPrac# git stash pop
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+        new file:   test2
+
+Dropped refs/stash@{0} (fb72bde90cd1ace9c5db81740401a6f94c5b4fca)
+```

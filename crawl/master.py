@@ -65,7 +65,7 @@ tag_db = config.tag_db
 
 max_depth = config.max_depth #the max parsing depth
 
-start_urls = ['http://zsb.jlu.edu.cn/list/45.html']
+start_urls = ['http://zsb.jlu.edu.cn/list/45.html','http://ccst.jlu.edu.cn/']
 
 
 nrq = RedisQueue('test',host=host_ip,port=host_port,db=nrq_db,password=host_pass)#have not solved queue
@@ -146,4 +146,3 @@ while True:
 		print url,'is put in queue.'
 	except UnicodeError:
 		pass
-

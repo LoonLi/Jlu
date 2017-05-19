@@ -1,6 +1,13 @@
 #coding=utf8
+#coding=utf8
 import redis
+from bs4 import BeautifulSoup
 import jieba
+import MySQLdb
+import time
+import sys
+sys.path.append("..")
+import config
 
 
 #停用词
@@ -1899,34 +1906,67 @@ sup
 ～＋  
 ￥  
 '''
+host_ip = config.host_ip
+host_port = config.host_port
+host_pass = config.host_pass
+html_db = config.html_db
+srq_db = config.srq_db
+nrq_db = config.nrq_db
+bl_db = config.bl_db # blacklist
+tag_db = config.tag_db
+wordtag_db = config.wordtag_db
+index_db = config.index_db
+urltag_db = config.urltag_db
+mysql_user = config.mysql_user
+mysql_passwd = config.mysql_passwd
+mysql_db = config.mysql_db
 
-index = redis.Redis(host='127.0.0.1',port=8888,db=2) #倒排索引
-words = redis.Redis(host='127.0.0.1',port=8888,db=1) #词语对序号
-source = redis.Redis(host='127.0.0.1',port=8888,db=0) #网页数据库
-que = u"保研"#查询短句
+
+rhtml = MySQLdb.connect(host_ip,mysql_user,mysql_passwd,mysql_db,charset='utf8')
+words = redis.Redis(host=host_ip,port=host_port,db=wordtag_db) #词语对序号
+index = redis.Redis(host=host_ip,port=host_port,db=index_db) #倒排索引
+pagerank = redis.Redis(host=host_ip,port=host_port,db=config.final_pagerank_db)
+que = u"新生宝典"#查询短句
 seg_list = jieba.cut_for_search(que)
 
 web_list = {}
-
+first = True
 for word in seg_list:
 	print word
 	if word in stop:
 		continue
 	no = words.get(word)
+	if no==None:
+		continue
 	tindex = index.hgetall(no)
 	for web in tindex:
 		if web in web_list:
 			web_list[web]=web_list[web]+tindex[web]
 		else:
-			web_list[web]=tindex[web]
+			if first:
+				web_list[web]=tindex[web]
+	if not first:
+		t = web_list.copy()
+		for web in t:
+			if web not in tindex:
+				del(web_list[web])
+	first = False
 
-sorted(web_list.items(), lambda x, y: cmp(x[1], y[1]), reverse=True)
+sentence = "SELECT url,html FROM html WHERE id=%s"
+c = rhtml.cursor()
+c.execute("set names utf8")
+rhtml.commit()
 
-count = 1
+final_dic = {}
 for web in web_list:
-	print 'No',count,'--------'
-	print source.hget(web,'url') 
-	count = count+1
-	if count>500:
-		break
-print 'End.'
+	r_dic = {}
+	c.execute(sentence%(web))
+	row = c.fetchall()[0]
+	r_dic['url'] = row[0]
+	# r_dic['html'] = row[1]
+	r_dic['pagerank'] = float(pagerank.get(web))
+	final_dic[web] = r_dic
+
+final_dic = sorted(final_dic.iteritems(),key=lambda d:d[1]['pagerank'],reverse=True)
+
+print final_dic
